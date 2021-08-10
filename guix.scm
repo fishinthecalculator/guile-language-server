@@ -89,9 +89,9 @@
      ("automake" ,automake)
      ("pkg-config" ,pkg-config)
      ("texinfo" ,texinfo)))
-  (inputs `(("guile" ,guile-2.2)))
+  (inputs `(("guile" ,guile-3.0)))
   (propagated-inputs
-   `(("guile-json" ,guile-json-1)))
+   `(("guile-json" ,guile-json-4)))
   (synopsis "LSP server for GNU Guile")
   (description "")
   (home-page "")

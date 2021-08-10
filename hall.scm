@@ -9,7 +9,7 @@
  (home-page "")
  (license gpl3+)
  (dependencies
-  `(("guile-json" (json) ,guile-json-1)))
+  `(("guile-json" (json) ,guile-json-4)))
  (skip ("wrapper"
         "tests/dir-locals/.dir-locals.el"
         "tests/dir-locals/testing/.dir-locals.el"))
