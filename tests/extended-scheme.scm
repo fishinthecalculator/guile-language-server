@@ -1,4 +1,5 @@
 ;;;; Copyright (C) 2018 Jonas Herzig <me@johni0702.de>
+;;;; Copyright (C) 2021 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;;;
 ;;;; This program is free software: you can redistribute it and/or modify
 ;;;; it under the terms of the GNU General Public License as published by
@@ -15,18 +16,16 @@
 ;;;;
 
 (define-module (tests extended-scheme)
-  #:use-module (tests test-utils)
   #:use-module (language-server guile extended-scheme)
   #:use-module (system base compile)
   #:use-module (system base language)
   #:use-module (ice-9 textual-ports)
-  #:export (test))
+  #:use-module (srfi srfi-64))
 
 (define-syntax-rule (expect-error body ...)
   (catch #t
     (lambda ()
-      body ...
-      (fail "expected an exception to be thrown"))
+      body ...)
     (lambda args args)))
 
 (define (string->scm str)
@@ -38,8 +37,8 @@
 (define (test-read-error-matches . args)
   (for-each
    (lambda (str)
-     (assert-equal (expect-error (string->scm str))
-                   (expect-error (escm->scm (string->escm str)))))
+     (expect-error (string->scm str))
+     (expect-error (escm->scm (string->escm str))))
    args))
 
 (define (make-default-env)
@@ -59,46 +58,47 @@
    (lambda (str)
      (define scm (string->scm str))
      (define escm (string->escm str))
-     (assert-equal scm (escm->scm escm)))
+     (test-equal scm (escm->scm escm)))
    args))
 
-(define (test)
-  (test-read-result-matches
-   ""
-   "  "
-   "a"
-   " a"
-   "'a"
-   "'(a)"
-   "`a"
-   "`(a ,b ,@(c d))"
-   "(a)"
-   "(a b)"
-   "(a b c)"
-   "(a (b c))"
-   " (  a ( b c ) ) "
-   "(define (a b . c) c)"
-   "(a 'b)"
-   "\"b\""
-   "(a \"b\")"
-   "#t" "#f" "#nil"
-   "#\\newline"
-   "#\\("
-   "#\\)"
-   "(a#|comment\n|#b)"
-   "(;comment\na)"
-   "'"
-   "(begin (define-syntax-rule (a this) 2))"
-   (string-append "(begin\n"
-                  (call-with-input-file (current-filename) get-string-all)
-                  "\n)"))
+(test-group "result-matches"
+            (test-read-result-matches
+             ""
+             "  "
+             "a"
+             " a"
+             "'a"
+             "'(a)"
+             "`a"
+             "`(a ,b ,@(c d))"
+             "(a)"
+             "(a b)"
+             "(a b c)"
+             "(a (b c))"
+             " (  a ( b c ) ) "
+             "(define (a b . c) c)"
+             "(a 'b)"
+             "\"b\""
+             "(a \"b\")"
+             "#t" "#f" "#nil"
+             "#\\newline"
+             "#\\("
+             "#\\)"
+             "(a#|comment\n|#b)"
+             "(;comment\na)"
+             "'"
+             "(begin (define-syntax-rule (a this) 2))"
+             (string-append "(begin\n"
+                            (call-with-input-file (current-filename) get-string-all)
+                            "\n)")))
 
 
-  (test-read-error-matches
-   "`"
-   ","
-   "' a"
-   "("
-   ")"
-   "\"a"
-   "#|"))
+(test-group "error-matches"
+            (test-read-error-matches
+             "`"
+             ","
+             "' a"
+             "("
+             ")"
+             "\"a"
+             "#|"))

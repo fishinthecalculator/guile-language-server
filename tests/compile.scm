@@ -1,4 +1,5 @@
 ;;;; Copyright (C) 2018 Jonas Herzig <me@johni0702.de>
+;;;; Copyright (C) 2021 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;;;
 ;;;; This program is free software: you can redistribute it and/or modify
 ;;;; it under the terms of the GNU General Public License as published by
@@ -15,15 +16,14 @@
 ;;;;
 
 (define-module (tests compile)
-  #:use-module (tests test-utils)
   #:use-module (language-server scm-utils)
   #:use-module (language-server protocol)
   #:use-module (language-server guile compile)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-64)
   #:use-module (ice-9 textual-ports)
   #:use-module (ice-9 vlist)
-  #:use-module (ice-9 match)
-  #:export (test))
+  #:use-module (ice-9 match))
 
 ;; emacs: (put 'run-state 'scheme-indent-function 2)
 (define-syntax run-state
@@ -76,11 +76,7 @@
                        (equal? has-line start-line)
                        (string-contains message has-text))))
                diags)
-    (fail "expected to find diagnostic"
-          (list has-severity has-code has-line has-text)
-          diags)))
-
-
+    (test-assert "Assert has diagnostic" #f)))
 (define (test)
   (define m1 "testing/module1.scm")
   (define m2 "testing/module2.scm")
@@ -88,143 +84,153 @@
   ;;;
   ;;; Errors/Warnings
   ;;;
-  (run-new-state state
-    ;; No errors
-    <- (compile state m1
-         "(+ 1\n2)")
-    (assert-equal '() (state-diagnostics state m1))
-    ;; Invalid syntax (missing closing paren)
-    <- (compile state m1
-         "(+ 1\n2")
-    (assert-has-diagnostic state m1 DiagnosticSeverityError
-                           "scm_i_lreadparen" 1 "end of file")
-    ;; Invalid syntax (missing closing quotation mark)
-    <- (compile state m1
-         "(+ 1 \")")
-    (assert-has-diagnostic state m1 DiagnosticSeverityError
-                           "scm_lreadr" 0 "end of file")
-    ;; Invalid syntax (hash reader error)
-    <- (compile state m1
-         "(+ 1 #\\invalid)")
-    (assert-has-diagnostic state m1 DiagnosticSeverityError
-                           ;; FIXME: should 'invalid' instead of '~a'
-                           "scm_lreadr" 0 "unknown character name ~a")
-    ;; Invalid syntax (unknown hash reader)
-    <- (compile state m1
-         "(+ 1 #$)")
-    (assert-has-diagnostic state m1 DiagnosticSeverityError
-                           ;; FIXME: should be '$' instead of '~S'
-                           "scm_lreadr" 0 "Unknown # object: ~S")
-    ;; Invalid syntax (invalid let)
-    <- (compile state m1
-         "(let ((a 1)))")
-    (assert-has-diagnostic state m1 DiagnosticSeverityError
-                           "syntax-error" 0 "bad let")
-    ;; Invalid syntax (custom syntax transformer)
-    <- (compile state m1
-         "
+  (test-group "Errors/Warnings"
+              (run-new-state state
+                             ;; No errors
+                             <- (compile state m1
+                                         "(+ 1\n2)")
+                             (test-equal '() (state-diagnostics state m1))
+                             ;; Invalid syntax (missing closing paren)
+                             <- (compile state m1
+                                         "(+ 1\n2")
+                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                                                    "scm_i_lreadparen" 1 "end of file")
+                             ;; Invalid syntax (missing closing quotation mark)
+                             <- (compile state m1
+                                         "(+ 1 \")")
+                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                                                    "scm_lreadr" 0 "end of file")
+                             ;; Invalid syntax (hash reader error)
+                             <- (compile state m1
+                                         "(+ 1 #\\invalid)")
+                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                                                    ;; FIXME: should 'invalid' instead of '~a'
+                                                    "scm_lreadr" 0 "unknown character name ~a")
+                             ;; Invalid syntax (unknown hash reader)
+                             <- (compile state m1
+                                         "(+ 1 #$)")
+                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                                                    ;; FIXME: should be '$' instead of '~S'
+                                                    "scm_lreadr" 0 "Unknown # object: ~S")
+                             ;; Invalid syntax (invalid let)
+                             <- (compile state m1
+                                         "(let ((a 1)))")
+                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                                                    "syntax-error" 0 "bad let")
+                             ;; Invalid syntax (custom syntax transformer)
+                             <- (compile state m1
+                                         "
           (define-syntax-rule (test a) (syntax-error \"custom\"))
           (test a)")
-    ;; FIXME: should be line 2, not sure if guile is the limiting factor here
-    (assert-has-diagnostic state m1 DiagnosticSeverityError
-                           "syntax-error" 0 "custom")
-    ;; Unbound variable
-    <- (compile state m1
-         "(+ 1 a)")
-    (assert-has-diagnostic state m1 DiagnosticSeverityWarning
-                           0 0 "unbound variable `a'"))
+                             ;; FIXME: should be line 2, not sure if guile is the limiting factor here
+                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                                                    "syntax-error" 0 "custom")
+                             ;; Unbound variable
+                             <- (compile state m1
+                                         "(+ 1 a)")
+                             (assert-has-diagnostic state m1 DiagnosticSeverityWarning
+                                                    0 0 "unbound variable `a'")))
 
 
   ;;;
   ;;; Modules
   ;;;
-  (run-new-state state
-    ;; Compile trivial module
-    <- (compile state m1
-         "(define-module (testing module1) #:export (test1))")
-    (assert-equal '() (state-diagnostics state m1))
-    ;; Use previously defined module
-    <- (compile state m2
-         "(define-module (testing module2) #:use-module (testing module1))
+  (test-group "Modules"
+              (run-new-state state
+                             ;; Compile trivial module
+                             <- (compile state m1
+                                         "(define-module (testing module1) #:export (test1))")
+                             (test-equal '() (state-diagnostics state m1))
+                             ;; Use previously defined module
+                             <- (compile state m2
+                                         "(define-module (testing module2) #:use-module (testing module1))
              (test1)")
-    (assert-equal '() (state-diagnostics state m2))
-    ;; Use non-existent export
-    <- (compile state m2
-         "(define-module (testing module2) #:use-module (testing module1))
+                             (test-equal '() (state-diagnostics state m2))
+                             ;; Use non-existent export
+                             <- (compile state m2
+                                         "(define-module (testing module2) #:use-module (testing module1))
              (test1)
              (test2)")
-    (assert-has-diagnostic state m2 DiagnosticSeverityWarning
-                           0 2 "unbound variable `test2'")
-    ;; Add new export
-    <- (compile state m1
-         "(define-module (testing module1) #:export (test1 test2))")
-    (assert-equal '() (state-diagnostics state m2))
-    ;; Remove old export
-    <- (compile state m1
-         "(define-module (testing module1) #:export (test2))")
-    (assert-has-diagnostic state m2 DiagnosticSeverityWarning
-                           0 1 "unbound variable `test1'")
-    ;; Import more modules
-    <- (compile state m2
-         "(define-module (testing module2) 
+                             (assert-has-diagnostic state m2 DiagnosticSeverityWarning
+                                                    0 2 "unbound variable `test2'")
+                             ;; Add new export
+                             <- (compile state m1
+                                         "(define-module (testing module1) #:export (test1 test2))")
+                             (test-equal '() (state-diagnostics state m2))
+                             ;; Remove old export
+                             <- (compile state m1
+                                         "(define-module (testing module1) #:export (test2))")
+                             (assert-has-diagnostic state m2 DiagnosticSeverityWarning
+                                                    0 1 "unbound variable `test1'")
+                             ;; Import more modules
+                             <- (compile state m2
+                                         "(define-module (testing module2)
                          #:use-module (testing module1)
                          #:use-module (srfi srfi-1))
              (any #f #f)
              (test2)")
-    (assert-equal '() (state-diagnostics state m2))
-    <- (compile state m2
-         "(define-module (testing module2) 
+                             (test-equal '() (state-diagnostics state m2))
+                             <- (compile state m2
+                                         "(define-module (testing module2)
                          #:use-module (testing module1)
                          #:use-module (srfi srfi-1)
                          #:use-module (ice-9 textual-ports))
              (any get-string-all #f)
              (test2)")
-    (assert-equal '() (state-diagnostics state m2)))
+                             (test-equal '() (state-diagnostics state m2))))
+
+
   ;; Non-existent imports
-  (run-new-state state
-    (newline)
-    (newline)
-    (newline)
-    ;; First a working base case
-    <- (compile state m1
-         "(define-module (testing module1) 
+  (test-group "Non-existent imports"
+              (run-new-state state
+                             (newline)
+                             (newline)
+                             (newline)
+                             ;; First a working base case
+                             <- (compile state m1
+                                         "(define-module (testing module1)
                          #:use-module (srfi srfi-1))
           (every #f '())")
-    (display state) (newline)
-    (assert-equal '() (state-diagnostics state m1))
-    ;; Then import a non-existent module
-    <- (compile state m1
-         "(define-module (testing module1) 
+                             (display state) (newline)
+                             (test-equal '() (state-diagnostics state m1))
+                             ;; Then import a non-existent module
+                             <- (compile state m1
+                                         "(define-module (testing module1)
                          #:use-module (srfi srfi-1)
                          ;; Intentional typo: Missing `s' of `ports'
                          #:use-module (ice-9 textual-port))
           (every get-string-all '())")
-    (display state) (newline)
-    (assert-has-diagnostic state m1 DiagnosticSeverityError
-                           "misc-error" 0 "no code for module (ice-9 textual-port)")
-    ;; And then with the fixed module name
-    <- (compile state m1
-         "(define-module (testing module1) 
+                             (display state) (newline)
+                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                                                    "misc-error" 0 "no code for module (ice-9 textual-port)")
+                             ;; And then with the fixed module name
+                             <- (compile state m1
+                                         "(define-module (testing module1)
                          #:use-module (srfi srfi-1)
                          #:use-module (ice-9 textual-ports))
           (every get-string-all '())")
-    (display state) (newline)
-    (assert-equal '() (state-diagnostics state m1)))
+                             (display state) (newline)
+                             (test-equal '() (state-diagnostics state m1))))
+
+
   ;; Filtered imports
-  (run-new-state state
-    ;; Compile module without filter
-    <- (compile state m1
-         "(define-module (testing module1) 
+  (test-group "Filtered imports"
+              (run-new-state state
+                             ;; Compile module without filter
+                             <- (compile state m1
+                                         "(define-module (testing module1)
                          #:use-module (srfi srfi-1))
           (any #f '())
           (every #f '())")
-    (assert-equal '() (state-diagnostics state m1))
-    <- (compile state m1
-         "(define-module (testing module1) 
+                             (test-equal '() (state-diagnostics state m1))
+                             <- (compile state m1
+                                         "(define-module (testing module1)
                          #:use-module ((srfi srfi-1) #:select (every)))
           (any #f '())
           (every #f '())")
-    (assert-has-diagnostic state m1 DiagnosticSeverityWarning
-                           0 2 "unbound variable `any'")
-    (assert-equal (list (car (state-diagnostics state m1))) ; one element list
-                  (state-diagnostics state m1))))
+                             (assert-has-diagnostic state m1 DiagnosticSeverityWarning
+                                                    0 2 "unbound variable `any'")
+                             (test-equal (list (car (state-diagnostics state m1))) ; one element list
+                               (state-diagnostics state m1)))))
+
+(test)

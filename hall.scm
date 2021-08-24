@@ -11,13 +11,10 @@
  (dependencies
   `(("guile-json" (json) ,guile-json-4)))
  (skip ("wrapper"
-        "tests/dir-locals/.dir-locals.el"
-        "tests/dir-locals/testing/.dir-locals.el"))
+        "tests/dir-locals"))
  (files (libraries
-         ((scheme-file "test")
-          (scheme-file "json-rpc")
+         ((scheme-file "json-rpc")
           (scheme-file "format")
-          (scheme-file "language-server")
           (directory
            "language-server"
            ((directory
@@ -32,11 +29,7 @@
             (scheme-file "emacs")))))
         (tests ((directory
                  "tests"
-                 ((directory
-                   "dir-locals"
-                   ((directory "testing" ())))
-                  (scheme-file "test-utils")
-                  (scheme-file "formatter")
+                 ((scheme-file "formatter")
                   (scheme-file "extended-scheme")
                   (scheme-file "compile")))))
         (programs

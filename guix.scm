@@ -30,11 +30,6 @@
      #:phases
      (modify-phases
          %standard-phases
-       (replace 'check
-         (lambda* (#:key tests? #:allow-other-keys)
-           (when tests?
-             (invoke "guile" "-s" "test.scm"))
-           #t))
        (add-after
            'install
            'hall-wrap-binaries
@@ -73,7 +68,6 @@
                  (lambda (file)
                    (wrap-program
                        (string-append bin file)
-                     `("PATH" ":" prefix (,(string-append (assoc-ref inputs "guile") "/bin")))
                      (dep-path
                       "GUILE_LOAD_PATH"
                       (uncompiled-dir out version)

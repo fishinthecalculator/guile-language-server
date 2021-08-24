@@ -34,10 +34,8 @@ SUFFIXES = .scm .go
 .scm.go:
 	$(AM_V_GEN)$(top_builddir)/pre-inst-env $(GUILE_TOOLS) compile $(GUILE_WARNINGS) -o "$@" "$<"
 
-SOURCES = test.scm \
-          json-rpc.scm \
+SOURCES = json-rpc.scm \
           format.scm \
-          language-server.scm \
           language-server/guile/xref.scm \
           language-server/guile/server.scm \
           language-server/guile/formatter.scm \
@@ -47,8 +45,7 @@ SOURCES = test.scm \
           language-server/protocol.scm \
           language-server/emacs.scm
 
-TESTS = tests/test-utils.scm \
-        tests/formatter.scm \
+TESTS = tests/formatter.scm \
         tests/extended-scheme.scm \
         tests/compile.scm
 
