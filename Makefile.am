@@ -66,7 +66,8 @@ AM_TESTS_ENVIRONMENT = abs_top_srcdir="$(abs_top_srcdir)"
 info_TEXINFOS = doc/language-server.texi
 dvi: # Don't build dvi docs
 
-EXTRA_DIST += README \
+EXTRA_DIST += README.org \
+              README \
               HACKING \
               COPYING \
               NEWS \

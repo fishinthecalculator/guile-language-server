@@ -37,7 +37,8 @@
            "scripts"
            ((in-file "guile-ls")))))
         (documentation
-         ((text-file "README")
+         ((org-file "README")
+          (symlink "README" "README.org")
           (text-file "HACKING")
           (text-file "COPYING")
           (directory "doc" ((texi-file "language-server")))
