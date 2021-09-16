@@ -18,7 +18,7 @@
   #:use-module (json-rpc)
   #:use-module (srfi srfi-9)
   #:use-module (ice-9 match)
-  #:export (RequestCancelled
+  #:export (request-cancelled
 
             <position>
             make-position
@@ -54,18 +54,18 @@
             diagnostic-message
             diagnostic-relatedInfo
 
-            DiagnosticSeverityError
-            DiagnosticSeverityWarning
-            DiagnosticSeverityInformation
-            DiagnosticSeverityHint
+            diagnostic-severity-error
+            diagnostic-severity-warning
+            diagnostic-severity-information
+            diagnostic-severity-hint
 
-            <textDocument>
-            make-textDocument
-            textDocument?
-            textDocument-uri
-            textDocument-languageId
-            textDocument-version
-            textDocument-text
+            <text-document>
+            make-text-document
+            text-document?
+            text-document-uri
+            text-document-languageId
+            text-document-version
+            text-document-text
 
             position->scm
             range->scm
@@ -74,14 +74,14 @@
             diagnostic->scm
 
             scm->position
-            scm->textDocument
+            scm->text-document
 
             source-properties->position
 
-            sendRegisterCapability
-            sendDiagnostics))
+            send-register-capability
+            send-diagnostics))
 
-(define RequestCancelled -32800)
+(define request-cancelled -32800)
 
 (define-record-type <position>
   (make-position line char)
@@ -117,18 +117,18 @@
   (message diagnostic-message)
   (relatedInfo diagnostic-relatedInfo))
 
-(define DiagnosticSeverityError 1)
-(define DiagnosticSeverityWarning 2)
-(define DiagnosticSeverityInformation 3)
-(define DiagnosticSeverityHint 4)
+(define diagnostic-severity-error 1)
+(define diagnostic-severity-warning 2)
+(define diagnostic-severity-information 3)
+(define diagnostic-severity-hint 4)
 
-(define-record-type <textDocument>
-  (make-textDocument uri languageId version text)
-  textDocument?
-  (uri textDocument-uri)
-  (languageId textDocument-languageId)
-  (version textDocument-version)
-  (text textDocument-text))
+(define-record-type <text-document>
+  (make-text-document uri languageId version text)
+  text-document?
+  (uri text-document-uri)
+  (languageId text-document-languageId)
+  (version text-document-version)
+  (text text-document-text))
 
 
 (define position->scm
@@ -167,8 +167,8 @@
    (hash-ref obj "line")
    (hash-ref obj "character")))
 
-(define (scm->textDocument obj)
-  (make-textDocument
+(define (scm->text-document obj)
+  (make-text-document
    (hash-ref obj "uri")
    (hash-ref obj "languageId")
    (hash-ref obj "version")
@@ -179,13 +179,13 @@
   (make-position (assoc-ref where 'line) (assoc-ref where 'column)))
 
 
-(define (sendRegisterCapability port . registrations)
-  (sendMessage port `(;; FIXME: handle response
-                      (id . #nil)
-                      (method . "client/registerCapability")
-                      (params . ((registrations . ,registrations))))))
+(define (send-register-capability port . registrations)
+  (send-message port `(;; FIXME: handle response
+                       (id . #nil)
+                       (method . "client/registerCapability")
+                       (params . ((registrations . ,registrations))))))
 
-(define (sendDiagnostics port uri diagnostics)
-  (sendNotification port "textDocument/publishDiagnostics"
-                    `((uri . ,uri)
-                      (diagnostics . ,(map diagnostic->scm diagnostics)))))
+(define (send-diagnostics port uri diagnostics)
+  (send-notification port "textDocument/publishDiagnostics"
+                     `((uri . ,uri)
+                       (diagnostics . ,(map diagnostic->scm diagnostics)))))

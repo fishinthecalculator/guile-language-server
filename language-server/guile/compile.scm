@@ -42,7 +42,7 @@
             documents-map->modules-map
 
             compile-single-document
-            compileDocument))
+            compile-document))
 
 (define-immutable-record-type <document>
   (make-document uri name text tree-il bytecode modules env diagnostics)
@@ -133,7 +133,7 @@
     (track-defined-modules overwritable-modules into body ...)
   (%track-defined-modules overwritable-modules into (lambda () body ...)))
 
-(define nullRange
+(define null-range
   (make-range (make-position 0 0)
               (make-position 0 1)))
 
@@ -142,8 +142,8 @@
   (match parts
     (("WARNING" _ . rest)
      (make-diagnostic
-      nullRange
-      DiagnosticSeverityWarning
+      null-range
+      diagnostic-severity-warning
       0
       "guile"
       (string-drop (string-join rest ":") 1)
@@ -154,7 +154,7 @@
      (make-diagnostic
       (make-range (make-position line char)
                   (make-position line (+ char 1)))
-      DiagnosticSeverityWarning
+      diagnostic-severity-warning
       0
       "guile"
       (string-drop (string-join rest ":") 1)
@@ -196,8 +196,8 @@
   (handle
    (#t (key . args)
        (ret-error
-        nullRange
-        DiagnosticSeverityError
+        null-range
+        diagnostic-severity-error
         (symbol->string key)
         "guile"
         (call-with-output-string
@@ -212,7 +212,7 @@
                    (ret-error
                     (make-range (make-position line (- char 1))
                                 (make-position line char))
-                    DiagnosticSeverityError
+                    diagnostic-severity-error
                     where
                     "guile"
                     (string-drop (string-join rest ":") 1)
@@ -221,7 +221,7 @@
    ('syntax-error (_ who what where form subform . extra)
                   (define range
                     (if (eq? where #f)
-                      nullRange
+                      null-range
                       (let* ((start-position (source-properties->position where))
                              ;; TODO somehow use `form` to generate range
                              (end-position (make-position (position-line start-position)
@@ -230,7 +230,7 @@
                   (display (cons* who what where form subform extra))
                   (ret-error
                    range
-                   DiagnosticSeverityError
+                   diagnostic-severity-error
                    "syntax-error"
                    "guile"
                    (string-append what ": " (call-with-output-string
@@ -342,7 +342,7 @@
        (build-dependents-tree all-documents document))
      dependent-modules))))
 
-(define (compileDocument all-documents document)
+(define (compile-document all-documents document)
   (define build-plan
     (unique (flatten-pre (build-dependents-tree all-documents document))))
   (display "Update for ") (display (document-uri document)) (newline)

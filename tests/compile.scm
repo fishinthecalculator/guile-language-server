@@ -57,7 +57,7 @@
         (make-document uri name "" #f #f vlist-null #f '())))
   (define text (string-join content "\n"))
   (define document (set-document-text old-document text))
-  (compileDocument documents document))
+  (compile-document documents document))
 
 (define (state-document state name)
   (vhash-ref state (name->uri name)))
@@ -93,29 +93,29 @@
                              ;; Invalid syntax (missing closing paren)
                              <- (compile state m1
                                          "(+ 1\n2")
-                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                             (assert-has-diagnostic state m1 diagnostic-severity-error
                                                     "scm_i_lreadparen" 1 "end of file")
                              ;; Invalid syntax (missing closing quotation mark)
                              <- (compile state m1
                                          "(+ 1 \")")
-                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                             (assert-has-diagnostic state m1 diagnostic-severity-error
                                                     "scm_lreadr" 0 "end of file")
                              ;; Invalid syntax (hash reader error)
                              <- (compile state m1
                                          "(+ 1 #\\invalid)")
-                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                             (assert-has-diagnostic state m1 diagnostic-severity-error
                                                     ;; FIXME: should 'invalid' instead of '~a'
                                                     "scm_lreadr" 0 "unknown character name ~a")
                              ;; Invalid syntax (unknown hash reader)
                              <- (compile state m1
                                          "(+ 1 #$)")
-                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                             (assert-has-diagnostic state m1 diagnostic-severity-error
                                                     ;; FIXME: should be '$' instead of '~S'
                                                     "scm_lreadr" 0 "Unknown # object: ~S")
                              ;; Invalid syntax (invalid let)
                              <- (compile state m1
                                          "(let ((a 1)))")
-                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                             (assert-has-diagnostic state m1 diagnostic-severity-error
                                                     "syntax-error" 0 "bad let")
                              ;; Invalid syntax (custom syntax transformer)
                              <- (compile state m1
@@ -123,12 +123,12 @@
           (define-syntax-rule (test a) (syntax-error \"custom\"))
           (test a)")
                              ;; FIXME: should be line 2, not sure if guile is the limiting factor here
-                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                             (assert-has-diagnostic state m1 diagnostic-severity-error
                                                     "syntax-error" 0 "custom")
                              ;; Unbound variable
                              <- (compile state m1
                                          "(+ 1 a)")
-                             (assert-has-diagnostic state m1 DiagnosticSeverityWarning
+                             (assert-has-diagnostic state m1 diagnostic-severity-warning
                                                     0 0 "unbound variable `a'")))
 
 
@@ -151,7 +151,7 @@
                                          "(define-module (testing module2) #:use-module (testing module1))
              (test1)
              (test2)")
-                             (assert-has-diagnostic state m2 DiagnosticSeverityWarning
+                             (assert-has-diagnostic state m2 diagnostic-severity-warning
                                                     0 2 "unbound variable `test2'")
                              ;; Add new export
                              <- (compile state m1
@@ -160,7 +160,7 @@
                              ;; Remove old export
                              <- (compile state m1
                                          "(define-module (testing module1) #:export (test2))")
-                             (assert-has-diagnostic state m2 DiagnosticSeverityWarning
+                             (assert-has-diagnostic state m2 diagnostic-severity-warning
                                                     0 1 "unbound variable `test1'")
                              ;; Import more modules
                              <- (compile state m2
@@ -201,7 +201,7 @@
                          #:use-module (ice-9 textual-port))
           (every get-string-all '())")
                              (display state) (newline)
-                             (assert-has-diagnostic state m1 DiagnosticSeverityError
+                             (assert-has-diagnostic state m1 diagnostic-severity-error
                                                     "misc-error" 0 "no code for module (ice-9 textual-port)")
                              ;; And then with the fixed module name
                              <- (compile state m1
@@ -228,7 +228,7 @@
                          #:use-module ((srfi srfi-1) #:select (every)))
           (any #f '())
           (every #f '())")
-                             (assert-has-diagnostic state m1 DiagnosticSeverityWarning
+                             (assert-has-diagnostic state m1 diagnostic-severity-warning
                                                     0 2 "unbound variable `any'")
                              (test-equal (list (car (state-diagnostics state m1))) ; one element list
                                (state-diagnostics state m1)))))
